@@ -1,0 +1,30 @@
+{
+    "name": "ts-dedupe",
+    "version": "0.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "lint": "eslint . --ext .ts,.d.ts,.js",
+        "lint:fix": "eslint . --ext .ts,.d.ts,.js --fix"
+    },
+    "author": "Giles Roadnight",
+    "license": "ISC",
+    "dependencies": {
+        "apply-config": "file:../apply-config/apply-config-1.2.2.tgz",
+        "ts-morph": "^10.0.2",
+        "typescript": "^4.2.3"
+    },
+    "devDependencies": {
+        "@typescript-eslint/eslint-plugin": "^4.20.0",
+        "@typescript-eslint/parser": "^4.20.0",
+        "eslint": "^7.23.0",
+        "eslint-config-prettier": "^6.15.0",
+        "eslint-config-standard": "^14.1.1",
+        "eslint-plugin-import": "^2.22.1",
+        "eslint-plugin-node": "^11.1.0",
+        "eslint-plugin-prettier": "^3.3.1",
+        "eslint-plugin-promise": "^4.3.1",
+        "prettier": "^2.2.1"
+    }
+}
