@@ -8,16 +8,18 @@
         "build": "tsc",
         "copy-samples": "copyfiles -u 1 \"./sample-types/*\" test-dedupe",
         "prestart": "npm run clean && npm run build && npm run copy-samples",
-        "start": "echo \"Error: no test specified\" && exit 1",
+        "start": "node dist/index.js sample-types/tsconfig.json",
         "lint": "eslint . --ext .ts,.d.ts,.js",
         "lint:fix": "eslint . --ext .ts,.d.ts,.js --fix"
     },
     "author": "Giles Roadnight",
     "license": "ISC",
     "dependencies": {
+        "ts-command-line-args": "^1.8.1",
         "ts-morph": "^10.0.2"
     },
     "devDependencies": {
+        "@types/node": "^14.14.37",
         "@typescript-eslint/eslint-plugin": "^4.20.0",
         "@typescript-eslint/parser": "^4.20.0",
         "copyfiles": "^2.4.1",
