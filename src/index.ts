@@ -1,1 +1,1 @@
-export * from './dedupe';
+export * from './de-dupe';

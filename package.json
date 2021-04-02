@@ -13,7 +13,8 @@
         "build:watch": "tsc --watch",
         "copy-samples": "copyfiles -u 1 \"./sample-types/*\" test-dedupe",
         "prestart": "npm run clean && npm run build && npm run copy-samples",
-        "start": "node dist/bin/de-dupe.js sample-types/tsconfig.json -t sample-types/shared.d.ts",
+        "start": "node dist/bin/de-dupe.js test-dedupe/tsconfig.json -t test-dedupe/shared.d.ts",
+        "debug": "node --inspect dist/bin/de-dupe.js test-dedupe/tsconfig.json -t test-dedupe/shared.d.ts",
         "lint": "eslint . --ext .ts,.d.ts,.js",
         "lint:fix": "eslint . --ext .ts,.d.ts,.js --fix"
     },
