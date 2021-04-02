@@ -25,7 +25,9 @@ export async function deDupe(
 
     const nodeLookup: NodeLookup = buildNodeLookup(files, options);
 
-    renameIncompatibleNodes(nodeLookup, options);
+    const nodeList = renameIncompatibleNodes(nodeLookup, options);
+
+    Object.values(nodeList).forEach((nodes) => nodes.forEach((node) => console.log(node.getName())));
 
     options.logger?.log(chalk.blue(`Saving Project...`));
 
@@ -46,8 +48,12 @@ function renameNodes(
     [nodeName, nodeListLookup]: [string, MatchingNodesLookup],
     options: IDeDupeOptions,
 ) {
-    Object.values(nodeListLookup)
-        .filter(isDefined)
+    const values = Object.values(nodeListLookup).filter(isDefined);
+
+    if (values.length < 2 && values[0]?.length < 2) {
+        return lookup;
+    }
+    values
         .sort((valueOne, valueTwo) => valueTwo.length - valueOne.length)
         .forEach((nodes, index) => {
             if (index === 0) {
