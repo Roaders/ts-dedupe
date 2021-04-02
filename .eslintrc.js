@@ -32,6 +32,7 @@ module.exports = {
                 tabWidth: 4,
             },
         ],
+        '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
     overrides: [
         {

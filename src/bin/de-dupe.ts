@@ -22,4 +22,4 @@ export const args = parse<ITSDedupeArgs>(
     { helpArg: 'help' },
 );
 
-deDupe(args.projectPath, args.targetPath);
+deDupe(args.projectPath, args.targetPath, { logger: console });

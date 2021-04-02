@@ -1,16 +1,80 @@
-import { Project, Node, InterfaceDeclaration, TypeAliasDeclaration } from 'ts-morph';
+import chalk from 'chalk';
+import { Project, Node, InterfaceDeclaration, TypeAliasDeclaration, SourceFile } from 'ts-morph';
+import { isDefined } from './helpers';
+import { relative } from 'path';
 
 type DeDupeTarget = InterfaceDeclaration | TypeAliasDeclaration;
 type MatchingNodesLookup = Record<string, DeDupeTarget[] | undefined>;
 type NodeLookup = Record<string, MatchingNodesLookup | undefined>;
 
-export function deDupe(projectPath: string, duplicatesFilePath: string): void {
-    console.log(`deDupe`, projectPath, duplicatesFilePath);
+export interface IDeDupeOptions {
+    logger?: typeof console;
+}
+
+export async function deDupe(
+    projectPath: string,
+    duplicatesFilePath: string,
+    options: IDeDupeOptions = {},
+): Promise<void> {
+    options.logger?.log(chalk.blue(`Loading Project '${projectPath}'`));
 
     const project = new Project({ tsConfigFilePath: projectPath });
     // const typeChecker = project.getTypeChecker();
 
     const files = project.getSourceFiles();
+
+    const nodeLookup: NodeLookup = buildNodeLookup(files, options);
+
+    renameIncompatibleNodes(nodeLookup, options);
+
+    options.logger?.log(chalk.blue(`Saving Project...`));
+
+    await project.save();
+
+    options.logger?.log(chalk.green(`Project Saved.`));
+}
+
+function renameIncompatibleNodes(nodeLookup: NodeLookup, options: IDeDupeOptions): Record<string, DeDupeTarget[]> {
+    options.logger?.log(chalk.blue(`Renaming duplicated incompatible types...`));
+    return Object.entries(nodeLookup)
+        .filter<[string, MatchingNodesLookup]>(hasLookup)
+        .reduce<Record<string, DeDupeTarget[]>>((lookup, entry) => renameNodes(lookup, entry, options), {});
+}
+
+function renameNodes(
+    lookup: Record<string, DeDupeTarget[]>,
+    [nodeName, nodeListLookup]: [string, MatchingNodesLookup],
+    options: IDeDupeOptions,
+) {
+    Object.values(nodeListLookup)
+        .filter(isDefined)
+        .sort((valueOne, valueTwo) => valueTwo.length - valueOne.length)
+        .forEach((nodes, index) => {
+            if (index === 0) {
+                lookup[nodeName] = nodes;
+            } else {
+                const newNodeName = `${nodeName}_${index}`;
+                const fileNames = nodes
+                    .map((node) => node.getSourceFile().getFilePath())
+                    .map((fullPath) => relative(process.cwd(), fullPath))
+                    .join(', ');
+                options.logger?.log(
+                    chalk.yellow(`Duplicated ${nodeName} renamed to ${newNodeName} in files: [${fileNames}]`),
+                );
+                nodes.forEach((node) => node.rename(newNodeName));
+                lookup[newNodeName] = nodes;
+            }
+        });
+
+    return lookup;
+}
+
+function hasLookup(value: [string, MatchingNodesLookup | undefined]): value is [string, MatchingNodesLookup] {
+    return value[1] != null;
+}
+
+function buildNodeLookup(files: SourceFile[], options: IDeDupeOptions): NodeLookup {
+    options.logger?.log(chalk.blue(`Examining Project...`));
 
     const nodeLookup: NodeLookup = {};
 
@@ -36,24 +100,17 @@ export function deDupe(projectPath: string, duplicatesFilePath: string): void {
         node.forEachChild(handleNode);
     }
 
-    files.forEach((file) => {
-        console.log(`file`, file.getFilePath());
+    files.forEach((file) => file.forEachChild(handleNode));
 
-        file.forEachChild(handleNode);
-
-        //file.fixUnusedIdentifiers(); TODO
-    });
+    return nodeLookup;
 }
 
 function getNodesList(nodeText: string, lookup: MatchingNodesLookup): DeDupeTarget[] {
     let nodeList = lookup[nodeText];
 
     if (nodeList == null) {
-        console.log(`creating node list for ${nodeText}`);
         nodeList = [];
         lookup[nodeText] = nodeList;
-    } else {
-        console.log(`returning existing node list for ${nodeText}`);
     }
 
     return nodeList;
@@ -63,11 +120,8 @@ function getMatchingNodeLookup(name: string, nodeLookup: NodeLookup): MatchingNo
     let lookup = nodeLookup[name];
 
     if (lookup == null) {
-        console.log(`creating Node lookup for ${name}`);
         lookup = {};
         nodeLookup[name] = lookup;
-    } else {
-        console.log(`Returning existing lookup for ${name}`);
     }
 
     return lookup;

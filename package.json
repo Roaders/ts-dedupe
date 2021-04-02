@@ -3,7 +3,7 @@
     "version": "0.0.0",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
-    "bin":{
+    "bin": {
         "ts-dedupe": "dist/bin/de-dupe.ts"
     },
     "scripts": {
@@ -21,6 +21,7 @@
     "author": "Giles Roadnight",
     "license": "ISC",
     "dependencies": {
+        "chalk": "^4.1.0",
         "ts-command-line-args": "^1.8.1",
         "ts-morph": "^10.0.2"
     },
