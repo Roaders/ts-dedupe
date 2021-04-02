@@ -1,14 +1,19 @@
 {
     "name": "ts-dedupe",
     "version": "0.0.0",
-    "main": "index.js",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "bin":{
+        "ts-dedupe": "dist/bin/de-dupe.ts"
+    },
     "scripts": {
         "clean": "rimraf dist test-dedupe",
         "prebuild": "npm run clean",
         "build": "tsc",
+        "build:watch": "tsc --watch",
         "copy-samples": "copyfiles -u 1 \"./sample-types/*\" test-dedupe",
         "prestart": "npm run clean && npm run build && npm run copy-samples",
-        "start": "node dist/index.js sample-types/tsconfig.json",
+        "start": "node dist/bin/de-dupe.js sample-types/tsconfig.json -t sample-types/shared.d.ts",
         "lint": "eslint . --ext .ts,.d.ts,.js",
         "lint:fix": "eslint . --ext .ts,.d.ts,.js --fix"
     },
