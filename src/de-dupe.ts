@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import { Project, Node, InterfaceDeclaration, TypeAliasDeclaration, SourceFile } from 'ts-morph';
 import { isDefined } from './helpers';
-import { relative } from 'path';
+import { join, normalize, relative } from 'path';
 
 type DeDupeTarget = InterfaceDeclaration | TypeAliasDeclaration;
 type MatchingNodesLookup = Record<string, DeDupeTarget[] | undefined>;
@@ -27,9 +27,16 @@ export async function deDupe(
 
     const nodeGroups = renameIncompatibleNodes(nodeLookup, options);
 
+    if (Object.values(nodeGroups).length === 0) {
+        options.logger?.log(chalk.green(`No duplicates found. Exiting`));
+        return;
+    }
+
+    const duplicatesFile = project.createSourceFile(duplicatesFilePath); // TODO try to add existing first if it fails create new
+
     const nodeList = Object.values(nodeGroups).reduce((all, current) => [...all, ...current], []);
 
-    removeDuplicateNodes(nodeList);
+    replaceDuplicateNodesWithImport(nodeList, duplicatesFile);
 
     options.logger?.log(chalk.blue(`Saving Project...`));
 
@@ -38,10 +45,44 @@ export async function deDupe(
     options.logger?.log(chalk.green(`Project Saved.`));
 }
 
-function removeDuplicateNodes(nodes: DeDupeTarget[]) {
-    nodes.forEach((node) => node.remove());
+/**
+ * Deletes the original types from the source files and replaces with an import
+ * @param nodes
+ * @param duplicatesFilePath
+ */
+function replaceDuplicateNodesWithImport(nodes: DeDupeTarget[], duplicatesFile: SourceFile) {
+    nodes.forEach((node) => {
+        const sourceFile = node.getSourceFile();
+
+        let relativePath: string;
+
+        if (sourceFile.getDirectoryPath() === duplicatesFile.getDirectoryPath()) {
+            relativePath = `./${duplicatesFile.getBaseNameWithoutExtension()}`;
+        } else {
+            console.log(
+                `relative`,
+                sourceFile.getFilePath(),
+                duplicatesFile.getFilePath(),
+                relative(sourceFile.getFilePath(), duplicatesFile.getFilePath()),
+            );
+            relativePath = relative(sourceFile.getFilePath(), duplicatesFile.getFilePath()); // TODO resolve issues with generating relative path
+        }
+
+        sourceFile.addImportDeclaration({
+            moduleSpecifier: relativePath,
+            namedImports: [node.getName()],
+        });
+
+        node.remove();
+    });
 }
 
+/**
+ * Iterates through all nodes in the lookup and groups into matched nodes with a unique name
+ * @param nodeLookup
+ * @param options
+ * @returns
+ */
 function renameIncompatibleNodes(nodeLookup: NodeLookup, options: IDeDupeOptions): Record<string, DeDupeTarget[]> {
     options.logger?.log(chalk.blue(`Renaming duplicated incompatible types...`));
     return Object.entries(nodeLookup)
@@ -49,6 +90,14 @@ function renameIncompatibleNodes(nodeLookup: NodeLookup, options: IDeDupeOptions
         .reduce<Record<string, DeDupeTarget[]>>((lookup, entry) => renameNodes(lookup, entry, options), {});
 }
 
+/**
+ * Either adds nodes to the lookup with the original name or adds with a new name if there is a conflict between types
+ * Filters out types that are not duplicated
+ * @param lookup
+ * @param param1
+ * @param options
+ * @returns
+ */
 function renameNodes(
     lookup: Record<string, DeDupeTarget[]>,
     [nodeName, nodeListLookup]: [string, MatchingNodesLookup],
