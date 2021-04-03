@@ -17,8 +17,8 @@ A cli tool to move duplicated types and interfaces to a single file.
 
 | Argument | Alias | Type | Description |
 |-|-|-|-|
-| **project** | **p** | string | Location of the tsconfig file for your project. Defaults to 'tsconfig.json' |
 | **duplicatesFile** | **d** | string | Path of the file where duplicate types will be moved to. |
+| **project** | **p** | string | Optional. Location of the tsconfig file for your project. Defaults to 'tsconfig.json' |
 | **retainEmptyFiles** | **r** | boolean | If specified empty files will not be removed (may cause issues if also generating a barrel file) |
 | **barrelFile** | **b** | string | Optional. If specified will generate a barrel file for all the files in your project. |
 | **help** | **h** | boolean | Displays the help guide. |
@@ -27,7 +27,13 @@ A cli tool to move duplicated types and interfaces to a single file.
 
 ## Programmatic Usage
 
+```ts
+import { deDupe } from "ts-dedupe"
 
+deDupe({duplicatesFile: "shared-types.ts"})
+```
+
+`deDupe` takes an options object that matches the options for the cli as stated above. The only required property is `duplicatesFile` - the location to move duplicated types to. 
 
 ## Limitations
 

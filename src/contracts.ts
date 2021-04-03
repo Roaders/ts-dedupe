@@ -1,7 +1,7 @@
 export interface ICLIOptions {
-    project: string;
+    project?: string;
     duplicatesFile: string;
-    retainEmptyFiles: boolean;
+    retainEmptyFiles?: boolean;
     barrelFile?: string;
 }
 

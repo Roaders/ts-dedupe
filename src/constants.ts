@@ -1,21 +1,25 @@
 import { ArgumentConfig, ParseOptions, UsageGuideConfig } from 'ts-command-line-args';
 import { ITSDedupeArgs } from './contracts';
 
+export const defaultProject = 'tsconfig.json';
+
 export const argumentConfig: ArgumentConfig<ITSDedupeArgs> = {
-    project: {
-        type: String,
-        defaultValue: 'tsconfig.json',
-        alias: 'p',
-        description: `Location of the tsconfig file for your project. Defaults to 'tsconfig.json'`,
-    },
     duplicatesFile: {
         type: String,
         alias: 'd',
         defaultOption: true,
         description: `Path of the file where duplicate types will be moved to.`,
     },
+    project: {
+        type: String,
+        defaultValue: defaultProject,
+        optional: true,
+        alias: 'p',
+        description: `Optional. Location of the tsconfig file for your project. Defaults to 'tsconfig.json'`,
+    },
     retainEmptyFiles: {
         type: Boolean,
+        optional: true,
         alias: 'r',
         description: `If specified empty files will not be removed (may cause issues if also generating a barrel file)`,
     },
