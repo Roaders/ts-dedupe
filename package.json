@@ -18,7 +18,7 @@
         "lint:fix": "eslint . --ext .ts,.d.ts,.js --fix",
         "write-markdown": "write-markdown -f write-markdown.config.json",
         "verify-markdown": "write-markdown -f write-markdown.config.json -v",
-        "prepublishOnly": "npm run build && npm run verify-markdown"
+        "prepublishOnly": "npm run build && npm run lint && npm run verify-markdown"
     },
     "author": "Giles Roadnight",
     "license": "ISC",
