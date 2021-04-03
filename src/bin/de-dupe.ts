@@ -3,13 +3,7 @@
 import { parse } from 'ts-command-line-args';
 import { resolve } from 'path';
 import { deDupe } from '../';
-
-interface ITSDedupeArgs {
-    projectPath: string;
-    targetPath: string;
-    retainEmptyFiles: boolean;
-    help?: boolean;
-}
+import { ITSDedupeArgs } from '../contracts';
 
 /**
  * TODO: add help documentation
@@ -19,9 +13,13 @@ export const args = parse<ITSDedupeArgs>(
         projectPath: { type: resolve, defaultOption: true, defaultValue: 'tsconfig.json' },
         targetPath: { type: resolve, alias: 't' },
         retainEmptyFiles: { type: Boolean, alias: 'r' },
+        barrelPath: { type: resolve, optional: true, alias: 'b' },
         help: { type: Boolean, optional: true, alias: 'h' },
     },
     { helpArg: 'help' },
 );
 
-deDupe(args.projectPath, args.targetPath, { logger: console, retainEmptyFiles: args.retainEmptyFiles });
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const { help, ...dedupeOptions } = args;
+
+deDupe({ ...dedupeOptions, logger: console });

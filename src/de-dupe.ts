@@ -2,24 +2,16 @@ import chalk from 'chalk';
 import { Project, Node, InterfaceDeclaration, TypeAliasDeclaration, SourceFile } from 'ts-morph';
 import { isDefined } from './helpers';
 import { relative } from 'path';
+import { IDeDupeOptions } from './contracts';
 
 type DeDupeTarget = InterfaceDeclaration | TypeAliasDeclaration;
 type MatchingNodesLookup = Record<string, DeDupeTarget[] | undefined>;
 type NodeLookup = Record<string, MatchingNodesLookup | undefined>;
 
-export interface IDeDupeOptions {
-    logger?: typeof console;
-    retainEmptyFiles?: boolean;
-}
+export async function deDupe(options: IDeDupeOptions): Promise<void> {
+    options.logger?.log(chalk.blue(`Loading Project '${options.projectPath}'`));
 
-export async function deDupe(
-    projectPath: string,
-    duplicatesFilePath: string,
-    options: IDeDupeOptions = {},
-): Promise<void> {
-    options.logger?.log(chalk.blue(`Loading Project '${projectPath}'`));
-
-    const project = new Project({ tsConfigFilePath: projectPath });
+    let project = new Project({ tsConfigFilePath: options.projectPath });
 
     const files = project.getSourceFiles();
 
@@ -32,10 +24,10 @@ export async function deDupe(
         return;
     }
 
-    let duplicatesFile = project.getSourceFile(duplicatesFilePath);
+    let duplicatesFile = project.getSourceFile(options.targetPath);
 
     if (duplicatesFile == null) {
-        duplicatesFile = project.createSourceFile(duplicatesFilePath);
+        duplicatesFile = project.createSourceFile(options.targetPath);
     }
 
     addNodesToDuplicatesFile(Object.values(nodeGroups), duplicatesFile, options);
@@ -50,9 +42,31 @@ export async function deDupe(
 
     await project.save();
 
-    removeEmptyFiles(projectPath, options);
+    project = removeEmptyFiles(options) || project;
+
+    await createBarrel(project, options);
 
     options.logger?.log(chalk.green(`Project Saved.`));
+}
+
+async function createBarrel(project: Project, options: IDeDupeOptions) {
+    if (options.barrelPath == null) {
+        return;
+    }
+
+    const files = project.getSourceFiles();
+
+    options.logger?.log(chalk.blue(`Creating Barrel: '${relative(process.cwd(), options.barrelPath)}'`));
+
+    const barrelFile = project.createSourceFile(options.barrelPath);
+
+    files.forEach((file) => {
+        const moduleSpecifier = barrelFile.getRelativePathAsModuleSpecifierTo(file);
+
+        barrelFile.addExportDeclaration({ moduleSpecifier });
+    });
+
+    await barrelFile.save();
 }
 
 /**
@@ -67,8 +81,9 @@ function addNodesToDuplicatesFile(nodeGroups: DeDupeTarget[][], duplicatesFile: 
     nodeGroups
         .filter(isDefined)
         .filter((group) => group.length > 0)
-        .forEach((group) => {
-            const node = group[0];
+        .map((group) => group[0])
+        .filter((node) => node.getSourceFile().getFilePath() != duplicatesFile.getFilePath())
+        .forEach((node) => {
             const structure = node.getStructure();
             const importStructures = node
                 .getSourceFile()
@@ -80,13 +95,13 @@ function addNodesToDuplicatesFile(nodeGroups: DeDupeTarget[][], duplicatesFile: 
         });
 }
 
-function removeEmptyFiles(projectPath: string, options: IDeDupeOptions) {
+function removeEmptyFiles(options: IDeDupeOptions) {
     if (options.retainEmptyFiles === true) {
-        return;
+        return undefined;
     }
     options.logger?.log(chalk.blue(`Looking for empty files...`));
 
-    const project = new Project({ tsConfigFilePath: projectPath });
+    const project = new Project({ tsConfigFilePath: options.projectPath });
 
     options.logger?.log(chalk.blue(`Removing empty files...`));
 
@@ -98,6 +113,8 @@ function removeEmptyFiles(projectPath: string, options: IDeDupeOptions) {
             file.deleteImmediately();
         }
     });
+
+    return project;
 }
 
 /**
