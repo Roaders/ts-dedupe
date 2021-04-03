@@ -1,22 +1,19 @@
 import chalk from 'chalk';
 import { Project, Node, InterfaceDeclaration, TypeAliasDeclaration, SourceFile } from 'ts-morph';
-import { isDefined } from './helpers';
+import { isDefined, nodesIdentical } from './helpers';
 import { relative } from 'path';
 import { IDeDupeOptions } from './contracts';
 
-type DeDupeTarget = InterfaceDeclaration | TypeAliasDeclaration;
-type MatchingNodesLookup = Record<string, DeDupeTarget[] | undefined>;
+type DedupeTarget = InterfaceDeclaration | TypeAliasDeclaration;
+type MatchingNodesLookup = Map<Node, DedupeTarget[]>;
 type NodeLookup = Record<string, MatchingNodesLookup | undefined>;
 
 export async function dedupe(options: IDeDupeOptions): Promise<void> {
     options.logger?.log(chalk.blue(`Loading Project '${options.project}'`));
 
     let project = new Project({ tsConfigFilePath: options.project });
-
     const files = project.getSourceFiles();
-
     const nodeLookup: NodeLookup = buildNodeLookup(files, options);
-
     const nodeGroups = renameIncompatibleNodes(nodeLookup, options);
 
     if (Object.values(nodeGroups).length === 0) {
@@ -33,22 +30,25 @@ export async function dedupe(options: IDeDupeOptions): Promise<void> {
     addNodesToDuplicatesFile(Object.values(nodeGroups), duplicatesFile, options);
 
     const nodeList = Object.values(nodeGroups).reduce((all, current) => [...all, ...current], []);
-
     replaceDuplicateNodesWithImport(nodeList, duplicatesFile, options);
-
     tidyUpSourceFile(project.getSourceFiles(), options);
 
     options.logger?.log(chalk.blue(`Saving Project...`));
-
     await project.save();
 
     project = removeEmptyFiles(options) || project;
-
     await createBarrel(project, options);
 
     options.logger?.log(chalk.green(`Project Saved.`));
 }
 
+/**
+ * Creates a barrel file exporting everything from all the files in teh project
+ * If no barrelFile specified in options does nothing
+ * @param project
+ * @param options
+ * @returns
+ */
 async function createBarrel(project: Project, options: IDeDupeOptions) {
     if (options.barrelFile == null) {
         return;
@@ -75,7 +75,7 @@ async function createBarrel(project: Project, options: IDeDupeOptions) {
  * @param duplicatesFile
  * @param options
  */
-function addNodesToDuplicatesFile(nodeGroups: DeDupeTarget[][], duplicatesFile: SourceFile, options: IDeDupeOptions) {
+function addNodesToDuplicatesFile(nodeGroups: DedupeTarget[][], duplicatesFile: SourceFile, options: IDeDupeOptions) {
     options.logger?.log(chalk.blue(`Moving duplicates to '${relative(process.cwd(), duplicatesFile.getFilePath())}'`));
 
     nodeGroups
@@ -95,6 +95,11 @@ function addNodesToDuplicatesFile(nodeGroups: DeDupeTarget[][], duplicatesFile: 
         });
 }
 
+/**
+ * Removes files from the project that only have an empty syntax list and an end of file marker
+ * @param options
+ * @returns
+ */
 function removeEmptyFiles(options: IDeDupeOptions) {
     if (options.retainEmptyFiles === true) {
         return undefined;
@@ -132,7 +137,7 @@ async function tidyUpSourceFile(files: SourceFile[], options: IDeDupeOptions) {
  * @param nodes
  * @param duplicatesFilePath
  */
-function replaceDuplicateNodesWithImport(nodes: DeDupeTarget[], duplicatesFile: SourceFile, options: IDeDupeOptions) {
+function replaceDuplicateNodesWithImport(nodes: DedupeTarget[], duplicatesFile: SourceFile, options: IDeDupeOptions) {
     options.logger?.log(chalk.blue(`Removing duplicates and adding imports...`));
 
     nodes.forEach((node) => {
@@ -153,11 +158,11 @@ function replaceDuplicateNodesWithImport(nodes: DeDupeTarget[], duplicatesFile: 
  * @param options
  * @returns
  */
-function renameIncompatibleNodes(nodeLookup: NodeLookup, options: IDeDupeOptions): Record<string, DeDupeTarget[]> {
+function renameIncompatibleNodes(nodeLookup: NodeLookup, options: IDeDupeOptions): Record<string, DedupeTarget[]> {
     options.logger?.log(chalk.blue(`Renaming duplicated incompatible types...`));
     return Object.entries(nodeLookup)
         .filter<[string, MatchingNodesLookup]>(hasLookup)
-        .reduce<Record<string, DeDupeTarget[]>>((lookup, entry) => renameNodes(lookup, entry, options), {});
+        .reduce<Record<string, DedupeTarget[]>>((lookup, entry) => renameNodes(lookup, entry, options), {});
 }
 
 /**
@@ -169,11 +174,11 @@ function renameIncompatibleNodes(nodeLookup: NodeLookup, options: IDeDupeOptions
  * @returns
  */
 function renameNodes(
-    lookup: Record<string, DeDupeTarget[]>,
+    lookup: Record<string, DedupeTarget[]>,
     [nodeName, nodeListLookup]: [string, MatchingNodesLookup],
     options: IDeDupeOptions,
 ) {
-    const values = Object.values(nodeListLookup).filter(isDefined);
+    const values = Array.from(nodeListLookup.values()).filter(isDefined);
 
     if (values.length < 2 && values[0]?.length < 2) {
         return lookup;
@@ -209,11 +214,10 @@ function buildNodeLookup(files: SourceFile[], options: IDeDupeOptions): NodeLook
 
     const nodeLookup: NodeLookup = {};
 
-    function addToLookup(node: DeDupeTarget) {
+    function addToLookup(node: DedupeTarget) {
         const name = node.getName();
-        const text = node.getText();
         const matchingNodeLookup = getMatchingNodeLookup(name, nodeLookup);
-        const nodesList = getNodesList(text, matchingNodeLookup);
+        const nodesList = getNodesList(node, matchingNodeLookup);
 
         nodesList.push(node);
     }
@@ -236,12 +240,16 @@ function buildNodeLookup(files: SourceFile[], options: IDeDupeOptions): NodeLook
     return nodeLookup;
 }
 
-function getNodesList(nodeText: string, lookup: MatchingNodesLookup): DeDupeTarget[] {
-    let nodeList = lookup[nodeText];
+function getNodesList(node: Node, lookup: MatchingNodesLookup): DedupeTarget[] {
+    const matchingEntry = Array.from(lookup.entries()).find(([keyNode]) => nodesIdentical(keyNode, node));
 
-    if (nodeList == null) {
+    let nodeList: DedupeTarget[];
+
+    if (matchingEntry) {
+        nodeList = matchingEntry[1];
+    } else {
         nodeList = [];
-        lookup[nodeText] = nodeList;
+        lookup.set(node, nodeList);
     }
 
     return nodeList;
@@ -251,7 +259,7 @@ function getMatchingNodeLookup(name: string, nodeLookup: NodeLookup): MatchingNo
     let lookup = nodeLookup[name];
 
     if (lookup == null) {
-        lookup = {};
+        lookup = new Map();
         nodeLookup[name] = lookup;
     }
 
