@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import { Project, Node, InterfaceDeclaration, TypeAliasDeclaration, SourceFile } from 'ts-morph';
 import { isDefined } from './helpers';
-import { join, normalize, relative } from 'path';
+import { relative } from 'path';
 
 type DeDupeTarget = InterfaceDeclaration | TypeAliasDeclaration;
 type MatchingNodesLookup = Record<string, DeDupeTarget[] | undefined>;
@@ -9,6 +9,7 @@ type NodeLookup = Record<string, MatchingNodesLookup | undefined>;
 
 export interface IDeDupeOptions {
     logger?: typeof console;
+    retainEmptyFiles?: boolean;
 }
 
 export async function deDupe(
@@ -19,7 +20,6 @@ export async function deDupe(
     options.logger?.log(chalk.blue(`Loading Project '${projectPath}'`));
 
     const project = new Project({ tsConfigFilePath: projectPath });
-    // const typeChecker = project.getTypeChecker();
 
     const files = project.getSourceFiles();
 
@@ -32,17 +32,82 @@ export async function deDupe(
         return;
     }
 
-    const duplicatesFile = project.createSourceFile(duplicatesFilePath); // TODO try to add existing first if it fails create new
+    let duplicatesFile = project.getSourceFile(duplicatesFilePath);
+
+    if (duplicatesFile == null) {
+        duplicatesFile = project.createSourceFile(duplicatesFilePath);
+    }
+
+    addNodesToDuplicatesFile(Object.values(nodeGroups), duplicatesFile, options);
 
     const nodeList = Object.values(nodeGroups).reduce((all, current) => [...all, ...current], []);
 
-    replaceDuplicateNodesWithImport(nodeList, duplicatesFile);
+    replaceDuplicateNodesWithImport(nodeList, duplicatesFile, options);
+
+    tidyUpSourceFile(project.getSourceFiles(), options);
 
     options.logger?.log(chalk.blue(`Saving Project...`));
 
     await project.save();
 
+    removeEmptyFiles(projectPath, options);
+
     options.logger?.log(chalk.green(`Project Saved.`));
+}
+
+/**
+ * Adds duplicated nodes to the duplicates file
+ * @param nodeGroups
+ * @param duplicatesFile
+ * @param options
+ */
+function addNodesToDuplicatesFile(nodeGroups: DeDupeTarget[][], duplicatesFile: SourceFile, options: IDeDupeOptions) {
+    options.logger?.log(chalk.blue(`Moving duplicates to '${relative(process.cwd(), duplicatesFile.getFilePath())}'`));
+
+    nodeGroups
+        .filter(isDefined)
+        .filter((group) => group.length > 0)
+        .forEach((group) => {
+            const node = group[0];
+            const structure = node.getStructure();
+            const importStructures = node
+                .getSourceFile()
+                .getImportDeclarations()
+                .map((i) => i.getStructure());
+
+            duplicatesFile.addStatements([structure]);
+            duplicatesFile.addImportDeclarations(importStructures);
+        });
+}
+
+function removeEmptyFiles(projectPath: string, options: IDeDupeOptions) {
+    if (options.retainEmptyFiles === true) {
+        return;
+    }
+    options.logger?.log(chalk.blue(`Looking for empty files...`));
+
+    const project = new Project({ tsConfigFilePath: projectPath });
+
+    options.logger?.log(chalk.blue(`Removing empty files...`));
+
+    project.getSourceFiles().forEach((file) => {
+        const allNodes = file.getChildren().reduce<Node[]>((all, node) => [...all, node, ...node.getChildren()], []);
+
+        if (allNodes.length === 2 && Node.isSyntaxList(allNodes[0]) && allNodes[1].getKindName() === 'EndOfFileToken') {
+            options.logger?.warn(chalk.yellow(`Deleting empty file ${relative(process.cwd(), file.getFilePath())}`));
+            file.deleteImmediately();
+        }
+    });
+}
+
+/**
+ * Removes unnecessary imports
+ * @param files
+ * @param options
+ */
+async function tidyUpSourceFile(files: SourceFile[], options: IDeDupeOptions) {
+    options.logger?.log(chalk.blue(`Tidying up source files...`));
+    files.forEach((file) => file.organizeImports());
 }
 
 /**
@@ -50,26 +115,14 @@ export async function deDupe(
  * @param nodes
  * @param duplicatesFilePath
  */
-function replaceDuplicateNodesWithImport(nodes: DeDupeTarget[], duplicatesFile: SourceFile) {
+function replaceDuplicateNodesWithImport(nodes: DeDupeTarget[], duplicatesFile: SourceFile, options: IDeDupeOptions) {
+    options.logger?.log(chalk.blue(`Removing duplicates and adding imports...`));
+
     nodes.forEach((node) => {
         const sourceFile = node.getSourceFile();
 
-        let relativePath: string;
-
-        if (sourceFile.getDirectoryPath() === duplicatesFile.getDirectoryPath()) {
-            relativePath = `./${duplicatesFile.getBaseNameWithoutExtension()}`;
-        } else {
-            console.log(
-                `relative`,
-                sourceFile.getFilePath(),
-                duplicatesFile.getFilePath(),
-                relative(sourceFile.getFilePath(), duplicatesFile.getFilePath()),
-            );
-            relativePath = relative(sourceFile.getFilePath(), duplicatesFile.getFilePath()); // TODO resolve issues with generating relative path
-        }
-
         sourceFile.addImportDeclaration({
-            moduleSpecifier: relativePath,
+            moduleSpecifier: sourceFile.getRelativePathAsModuleSpecifierTo(duplicatesFile),
             namedImports: [node.getName()],
         });
 
