@@ -28,12 +28,12 @@ A cli tool to move duplicated types and interfaces to a single file.
 ## Programmatic Usage
 
 ```ts
-import { deDupe } from "ts-dedupe"
+import { dedupe } from "ts-dedupe"
 
-deDupe({duplicatesFile: "shared-types.ts"})
+dedupe({duplicatesFile: "shared-types.ts"})
 ```
 
-`deDupe` takes an options object that matches the options for the cli as stated above. The only required property is `duplicatesFile` - the location to move duplicated types to. 
+`dedupe` takes an options object that matches the options for the cli as stated above. The only required property is `duplicatesFile` - the location to move duplicated types to. 
 
 ## Limitations
 

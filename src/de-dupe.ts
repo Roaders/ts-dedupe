@@ -8,7 +8,7 @@ type DeDupeTarget = InterfaceDeclaration | TypeAliasDeclaration;
 type MatchingNodesLookup = Record<string, DeDupeTarget[] | undefined>;
 type NodeLookup = Record<string, MatchingNodesLookup | undefined>;
 
-export async function deDupe(options: IDeDupeOptions): Promise<void> {
+export async function dedupe(options: IDeDupeOptions): Promise<void> {
     options.logger?.log(chalk.blue(`Loading Project '${options.project}'`));
 
     let project = new Project({ tsConfigFilePath: options.project });

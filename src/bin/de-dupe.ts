@@ -2,7 +2,7 @@
 
 import { resolve } from 'path';
 import { parse } from 'ts-command-line-args';
-import { deDupe } from '../';
+import { dedupe } from '../';
 import { argumentConfig, options, defaultProject } from '../constants';
 import { ITSDedupeArgs } from '../contracts';
 
@@ -17,4 +17,4 @@ const { help, ...dedupeOptions } = {
     barrelFile: args.barrelFile ? resolve(args.barrelFile) : undefined,
 };
 
-deDupe(dedupeOptions);
+dedupe(dedupeOptions);
