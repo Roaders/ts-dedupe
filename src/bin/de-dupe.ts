@@ -1,25 +1,20 @@
 #!/usr/bin/env node
 
-import { parse } from 'ts-command-line-args';
 import { resolve } from 'path';
+import { parse } from 'ts-command-line-args';
 import { deDupe } from '../';
+import { argumentConfig, options } from '../constants';
 import { ITSDedupeArgs } from '../contracts';
 
-/**
- * TODO: add help documentation
- */
-export const args = parse<ITSDedupeArgs>(
-    {
-        projectPath: { type: resolve, defaultOption: true, defaultValue: 'tsconfig.json' },
-        targetPath: { type: resolve, alias: 't' },
-        retainEmptyFiles: { type: Boolean, alias: 'r' },
-        barrelPath: { type: resolve, optional: true, alias: 'b' },
-        help: { type: Boolean, optional: true, alias: 'h' },
-    },
-    { helpArg: 'help' },
-);
+export const args = parse<ITSDedupeArgs>(argumentConfig, options);
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const { help, ...dedupeOptions } = args;
+const { help, ...dedupeOptions } = {
+    ...args,
+    logger: console,
+    project: resolve(args.project),
+    duplicatesFile: resolve(args.duplicatesFile),
+    barrelFile: args.barrelFile ? resolve(args.barrelFile) : undefined,
+};
 
-deDupe({ ...dedupeOptions, logger: console });
+deDupe(dedupeOptions);

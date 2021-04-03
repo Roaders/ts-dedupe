@@ -9,9 +9,9 @@ type MatchingNodesLookup = Record<string, DeDupeTarget[] | undefined>;
 type NodeLookup = Record<string, MatchingNodesLookup | undefined>;
 
 export async function deDupe(options: IDeDupeOptions): Promise<void> {
-    options.logger?.log(chalk.blue(`Loading Project '${options.projectPath}'`));
+    options.logger?.log(chalk.blue(`Loading Project '${options.project}'`));
 
-    let project = new Project({ tsConfigFilePath: options.projectPath });
+    let project = new Project({ tsConfigFilePath: options.project });
 
     const files = project.getSourceFiles();
 
@@ -24,10 +24,10 @@ export async function deDupe(options: IDeDupeOptions): Promise<void> {
         return;
     }
 
-    let duplicatesFile = project.getSourceFile(options.targetPath);
+    let duplicatesFile = project.getSourceFile(options.duplicatesFile);
 
     if (duplicatesFile == null) {
-        duplicatesFile = project.createSourceFile(options.targetPath);
+        duplicatesFile = project.createSourceFile(options.duplicatesFile);
     }
 
     addNodesToDuplicatesFile(Object.values(nodeGroups), duplicatesFile, options);
@@ -50,15 +50,15 @@ export async function deDupe(options: IDeDupeOptions): Promise<void> {
 }
 
 async function createBarrel(project: Project, options: IDeDupeOptions) {
-    if (options.barrelPath == null) {
+    if (options.barrelFile == null) {
         return;
     }
 
     const files = project.getSourceFiles();
 
-    options.logger?.log(chalk.blue(`Creating Barrel: '${relative(process.cwd(), options.barrelPath)}'`));
+    options.logger?.log(chalk.blue(`Creating Barrel: '${relative(process.cwd(), options.barrelFile)}'`));
 
-    const barrelFile = project.createSourceFile(options.barrelPath);
+    const barrelFile = project.createSourceFile(options.barrelFile);
 
     files.forEach((file) => {
         const moduleSpecifier = barrelFile.getRelativePathAsModuleSpecifierTo(file);
@@ -101,7 +101,7 @@ function removeEmptyFiles(options: IDeDupeOptions) {
     }
     options.logger?.log(chalk.blue(`Looking for empty files...`));
 
-    const project = new Project({ tsConfigFilePath: options.projectPath });
+    const project = new Project({ tsConfigFilePath: options.project });
 
     options.logger?.log(chalk.blue(`Removing empty files...`));
 

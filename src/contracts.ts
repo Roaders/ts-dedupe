@@ -1,8 +1,8 @@
 export interface ICLIOptions {
-    projectPath: string;
-    targetPath: string;
+    project: string;
+    duplicatesFile: string;
     retainEmptyFiles: boolean;
-    barrelPath?: string;
+    barrelFile?: string;
 }
 
 export interface IDeDupeOptions extends ICLIOptions {

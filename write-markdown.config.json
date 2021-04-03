@@ -1,0 +1,5 @@
+{
+    "markdownPath": "readme.md",
+    "jsFile": "dist/constants.js",
+    "verifyMessage": "'{fileName}' is out of date. Rerun 'npm run write-markdown'"
+}
