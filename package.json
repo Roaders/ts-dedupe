@@ -52,7 +52,7 @@
         "type": "git",
         "url": "git+https://github.com/Roaders/ts-dedupe.git"
     },
-    "keywords": [],
+    "keywords": ["typescript", "dedupe", "interface"],
     "bugs": {
         "url": "https://github.com/Roaders/ts-dedupe/issues"
     },
