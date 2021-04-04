@@ -1,6 +1,6 @@
 {
     "name": "ts-dedupe",
-    "version": "0.3.0",
+    "version": "0.3.1",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "bin": {
@@ -52,7 +52,11 @@
         "type": "git",
         "url": "git+https://github.com/Roaders/ts-dedupe.git"
     },
-    "keywords": ["typescript", "dedupe", "interface"],
+    "keywords": [
+        "typescript",
+        "dedupe",
+        "interface"
+    ],
     "bugs": {
         "url": "https://github.com/Roaders/ts-dedupe/issues"
     },
