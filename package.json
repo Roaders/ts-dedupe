@@ -18,7 +18,9 @@
         "lint:fix": "eslint . --ext .ts,.d.ts,.js --fix",
         "write-markdown": "write-markdown -f write-markdown.config.json",
         "verify-markdown": "write-markdown -f write-markdown.config.json -v",
-        "prepublishOnly": "npm run build && npm run lint && npm run verify-markdown"
+        "prepublishOnly": "npm run build && npm run lint && npm run verify-markdown",
+        "test": "jest --ci",
+        "test:watch": "jest --watch"
     },
     "author": "Giles Roadnight",
     "license": "ISC",
@@ -28,6 +30,7 @@
         "ts-morph": "^10.0.2"
     },
     "devDependencies": {
+        "@types/jest": "^26.0.22",
         "@types/node": "^14.14.37",
         "@typescript-eslint/eslint-plugin": "^4.20.0",
         "@typescript-eslint/parser": "^4.20.0",
@@ -39,8 +42,10 @@
         "eslint-plugin-node": "^11.1.0",
         "eslint-plugin-prettier": "^3.3.1",
         "eslint-plugin-promise": "^4.3.1",
+        "jest": "^26.6.3",
         "prettier": "^2.2.1",
         "rimraf": "^3.0.2",
+        "ts-jest": "^26.5.4",
         "typescript": "^4.2.3"
     },
     "repository": {

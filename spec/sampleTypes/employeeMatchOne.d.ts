@@ -1,4 +1,4 @@
 export interface IEmployee {
-    name: string;
+    name: string; // some comment
     age: number;
 }

@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { Project, Node, InterfaceDeclaration, TypeAliasDeclaration, SourceFile } from 'ts-morph';
+import { Project, Node, InterfaceDeclaration, TypeAliasDeclaration, SourceFile, SyntaxKind } from 'ts-morph';
 import { isDefined, nodesIdentical } from './helpers';
 import { relative } from 'path';
 import { IDeDupeOptions } from './contracts';
@@ -113,7 +113,11 @@ function removeEmptyFiles(options: IDeDupeOptions) {
     project.getSourceFiles().forEach((file) => {
         const allNodes = file.getChildren().reduce<Node[]>((all, node) => [...all, node, ...node.getChildren()], []);
 
-        if (allNodes.length === 2 && Node.isSyntaxList(allNodes[0]) && allNodes[1].getKindName() === 'EndOfFileToken') {
+        if (
+            allNodes.length === 2 &&
+            Node.isSyntaxList(allNodes[0]) &&
+            allNodes[1].getKind() === SyntaxKind.EndOfFileToken
+        ) {
             options.logger?.warn(chalk.yellow(`Deleting empty file ${relative(process.cwd(), file.getFilePath())}`));
             file.deleteImmediately();
         }
