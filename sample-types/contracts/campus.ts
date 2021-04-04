@@ -1,5 +1,8 @@
 export type Department = 'Sales' | 'HR' | 'Management';
 
+/**
+ * Sample Comment
+ */
 export interface IEmployee {
     name: string;
     department: Department;

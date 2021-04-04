@@ -24,10 +24,15 @@ describe('helpers', () => {
 
     describe('nodesIdentical', () => {
         const tests = [
+            { file: 'employeeMatchZero.d.ts', expected: true },
             { file: 'employeeMatchOne.d.ts', expected: true },
             { file: 'employeeMatchTwo.d.ts', expected: true },
             { file: 'employeeMatchThree.d.ts', expected: true },
             { file: 'employeeMatchFour.d.ts', expected: true },
+            { file: 'employeeDifferOne.d.ts', expected: false },
+            { file: 'employeeDifferTwo.d.ts', expected: false },
+            { file: 'employeeDifferThree.d.ts', expected: false },
+            { file: 'employeeDifferFour.d.ts', expected: false },
         ];
 
         tests.forEach((test) => {

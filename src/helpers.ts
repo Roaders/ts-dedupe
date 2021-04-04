@@ -1,24 +1,22 @@
 import { LanguageVariant, Node, ScriptTarget, SyntaxKind } from 'ts-morph';
-import { createScanner } from 'typescript';
+import { createScanner, Scanner } from 'typescript';
 
 export function isDefined<T>(value: T | undefined | null): value is T {
     return value != null;
 }
 
 export function nodesIdentical(nodeOne: Node, nodeTwo: Node): boolean {
-    return nodeOne.getText() === nodeTwo.getText();
+    return generatorsMatch(createNodeScanner(nodeOne), createNodeScanner(nodeTwo));
 }
 
-export function areSame(valueOne: string, valueTwo: string): boolean {
-    const tokens1 = getTokens(valueOne);
-    const tokens2 = getTokens(valueTwo);
+function generatorsMatch(scannerOne: Scanner, scannerTwo: Scanner): boolean {
+    const generatorOne = getTokens(scannerOne);
+    const generatorTwo = getTokens(scannerTwo);
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
-        const token1 = tokens1.next();
-        const token2 = tokens2.next();
-
-        console.log({ token1, token2 });
+        const token1 = generatorOne.next();
+        const token2 = generatorTwo.next();
 
         if (token1.done && token2.done) return true;
         if (token1.done || token2.done) return false;
@@ -26,11 +24,15 @@ export function areSame(valueOne: string, valueTwo: string): boolean {
     }
 }
 
-function* getTokens(value: string) {
+function createNodeScanner(node: Node): Scanner {
     const scanner = createScanner(ScriptTarget.Latest, true);
-    scanner.setText(value);
+    scanner.setText(node.getText());
     scanner.setOnError((message) => console.error(message));
     scanner.setLanguageVariant(LanguageVariant.Standard);
 
+    return scanner;
+}
+
+function* getTokens(scanner: Scanner) {
     while (scanner.scan() !== SyntaxKind.EndOfFileToken) yield scanner.getTokenText();
 }

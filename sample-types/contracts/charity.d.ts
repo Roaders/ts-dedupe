@@ -3,7 +3,7 @@ export type Department = 'Sales' | 'HR' | 'Management';
 export interface IEmployee {
     name: string;
     department: Department;
-    id: number;
+    id: number; // sample comment
 }
 
 export interface IOffice {
